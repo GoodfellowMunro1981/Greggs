@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Linq;
+using Greggs.Products.Api.Conversions;
 using Greggs.Products.Api.DataAccess;
+using Greggs.Products.Api.Dtos;
 using Greggs.Products.Api.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -27,7 +29,7 @@ public class ProductController : ControllerBase
     [Produces("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public IActionResult Get(int pageStart = 0, int pageSize = 5)
+    public IActionResult Get(int pageStart = 0, int pageSize = 5, string currencyCode = null)
     {
         try
         {
@@ -35,7 +37,21 @@ public class ProductController : ControllerBase
 
             if (products.Any())
             {
-                return Ok(products);
+                if (string.IsNullOrWhiteSpace(currencyCode))
+                {
+                    // set default currencyCode to GBP if not set
+                    currencyCode = CurrencyConversion.CURRENCY_CODE_UNITED_KINGDOM;
+                }
+
+                var dtos = products
+                            .Select(x => new ProductDto
+                            {
+                                Name = x.Name,
+                                Price = CurrencyConversion.ConvertPrice(x.PriceInPounds, currencyCode),
+                                CurrencyCode = currencyCode
+                            });
+
+                return Ok(dtos);
             }
         }
         catch (Exception ex)
